@@ -7,9 +7,9 @@ from string import Template
 from Crypto.Cipher import AES
 
 
-PYPROTECT_KEY = b"\x00\x11\x22\x33\x44\x55\x66\x77\x88\x99\xaa\xbb\xcc\xdd\xee\xff"
-PYPROTECT_IV = b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
-PYPROTECT_EXT_NAME = ".pye"
+PYPROTECT_KEY = #b"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x99\xaa\xbb\xcc\xdd\xee\xff"
+PYPROTECT_IV = #b"\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00"
+PYPROTECT_EXT_NAME = ".enc"
 
 
 def wrap_entrance(root, modname, entrance_func):
@@ -28,7 +28,7 @@ if __name__ == '__main__':
     print('Entry point "%s:%s"' % (wrap_file, entrance_func))
 
 
-def encrypt_file(root, outroot, fname, enc_fname):
+def encrypt_file(root, outroot, fname, enc_fname,iv):
     fpath = os.path.join(root, fname)
     with open(fpath, 'rb') as f:
         content = bytearray(f.read())
@@ -38,6 +38,8 @@ def encrypt_file(root, outroot, fname, enc_fname):
     cryptor = AES.new(PYPROTECT_KEY, AES.MODE_CBC, PYPROTECT_IV)
 
     encrypted = cryptor.encrypt(bytes(content))
+    if iv:
+        os.remove(fpath)
     foutpath = os.path.join(outroot, enc_fname)
     with open(foutpath, 'wb') as f:
         f.write(encrypted)
@@ -58,7 +60,7 @@ def encrypt_tree(srcroot, entrances, destroot, excludes):
 
                 if not os.path.exists(outroot):
                     print('Makedir "%s"' % outroot)
-                    os.mkdir(outroot)
+                    os.makedirs(outroot,exist_ok=True)
 
                 if fpath in excludes:
                     shutil.copyfile(fpath, os.path.join(outroot, f))
@@ -67,8 +69,10 @@ def encrypt_tree(srcroot, entrances, destroot, excludes):
 
                 modname = f[:f.find('.')]
                 enc_fname = modname + PYPROTECT_EXT_NAME
-
-                encrypt_file(root, outroot, f, enc_fname)
+                iv=False
+                if srcroot == destroot:
+                    iv = True
+                encrypt_file(root, outroot, f, enc_fname,iv=iv)
 
                 for efile, efunc in entrances:
                     if efile == fpath:
@@ -83,6 +87,7 @@ def main():
     parser.add_argument('-s', help='Python source code root dir', required=True)
     parser.add_argument('-e', help='Python project entrances, format "File1:Func1,File2:Func2,..."', required=True)
     parser.add_argument('-o', help='Root dir for encrypted python files', default='encrypt_out')
+    parser.add_argument('-i', help='In Place Encrypt', action='store_true')
     parser.add_argument('--exclude', help='Source code files to be ignored, format "File1,File2"',)
     args = parser.parse_args()
 
@@ -93,8 +98,11 @@ def main():
         excludes = [os.path.normpath(os.path.join(srcroot, e)) for e in args.exclude.split(',')]
     else:
         excludes = []
-
-    destroot = os.path.join(os.getcwd(), args.o)
+	
+    if not args.i:
+        destroot = os.path.join(os.getcwd(), args.o)
+    else:
+        destroot = srcroot
 
     encrypt_tree(srcroot, entrances, destroot, excludes)
 
