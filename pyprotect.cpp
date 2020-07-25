@@ -47,24 +47,21 @@ public:
     void exec_module(const py::object& module) {
 #ifdef DEBUG
         printf("[load] %s\n", filename.c_str());
-#endif
+#endif//open file
 
-        ifstream fsrc(filename);
+		FILE *fileptr;
+        uint8_t *buffer;
+        long len;
+        
+        fileptr = fopen(filename.c_str(), "rb");  // Open the file in binary mode
+        fseek(fileptr, 0, SEEK_END);          // Jump to the end of the file
+        len = ftell(fileptr);             // Get the current byte offset in the file
+        rewind(fileptr);                      // Jump back to the beginning of the file
+        
+        buffer = (uint8_t *)malloc(len * sizeof(uint8_t)); // Enough memory for the file
+        fread(buffer, len, 1, fileptr); // Read in the entire file
+        fclose(fileptr); // Close the file
 
-        if (!fsrc.is_open()) {
-            return;
-        }
-
-        std::string src((std::istreambuf_iterator<char>(fsrc)),
-                        std::istreambuf_iterator<char>());
-
-        uint8_t *buffer = nullptr;
-        buffer = (uint8_t*)malloc(src.length());
-        if (!buffer) {
-            return;
-        }
-        memcpy(buffer, src.data(), src.length());
-        uint32_t len = (uint32_t)src.length();
 
         AES_CBC_decrypt_buffer(&aesCtx, buffer, len);
 
@@ -79,6 +76,7 @@ public:
 
         for (int i = 0; i < padding; ++i) {
             if (buffer[len-1-i] != padding) {
+				printf("[error] padding second=%d\n", len-1-i);
                 return;
             }
         }
