@@ -3,9 +3,13 @@
 #include <list>
 #include <fstream>
 
-#include <unistd.h>
-#include <sys/param.h>
-
+#include <io.h>
+#ifdef _WIN32
+    #include <direct.h>
+    #define getcwd _getcwd // stupid MSFT "deprecation" warning
+#elif
+    #include <unistd.h>
+#endif
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 #include <pybind11/eval.h>
@@ -22,7 +26,7 @@ using namespace pybind11::literals;
 #else
 #define OS_SEP '/'
 #endif
-
+#define MAXPATHLEN 1024
 
 struct ModLoader {
 private:
